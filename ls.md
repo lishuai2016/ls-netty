@@ -3,7 +3,7 @@
 
 
 
-# 项目简介
+# 项目简介 （环境搭建）
 这个是在https://github.com/netty/netty下载的4.1版本的zip包，在idea使用maven编译打包的时候会出现构建错误，
 使用去除checkstyle方式进行编译，如下
 clean package -Dmaven.test.skip=true -Dcheckstyle.skip=true
@@ -288,4 +288,5 @@ http://www.52im.net/thread-1935-1-1.html
 
 
 https://blog.csdn.net/u013857458/article/details/82527722
+https://blog.csdn.net/u013857458/article/category/7514839
 https://www.jianshu.com/p/f16698aa8be2?utm_source=oschina-app
