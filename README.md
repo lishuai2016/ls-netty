@@ -1,64 +1,33 @@
-# Netty Project
+# 项目简介 （环境搭建）
 
-Netty is an asynchronous event-driven network application framework for rapid development of maintainable high performance protocol servers & clients.
+这个是在https://github.com/netty/netty下载的4.1版本的zip包，在idea使用maven编译打包的时候会出现构建错误，使用去除checkstyle方式进行编译，如下:
 
-## Links
+clean package -Dmaven.test.skip=true -Dcheckstyle.skip=true
 
-* [Web Site](http://netty.io/)
-* [Downloads](http://netty.io/downloads.html)
-* [Documentation](http://netty.io/wiki/)
-* [@netty_project](https://twitter.com/netty_project)
+然后运行example模块的EchoServer，能正常运行不报错说明源码环境搭建成功
 
-## How to build
 
-For the detailed information about building and developing Netty, please visit [the developer guide](http://netty.io/wiki/developer-guide.html).  This page only gives very basic information.
+Netty是一个基于NIO的基于事件的高性能网络框架，在NIO里面，比较和核心的三个内容分别是Channel、Buffer、Selector，Channel负责网络数据传输，而Buffer则存储数据，Buffer可以从Channel中获取到数据，也可以向Channel里面写入数据，Selector可以监听多个Channel的事件，当发生某种事件的时候可以发出通知。
 
-You require the following to build Netty:
+备注：【channel的作用和socket类似】
 
-* Latest stable [Oracle JDK 7](http://www.oracle.com/technetwork/java/)
-* Latest stable [Apache Maven](http://maven.apache.org/)
-* If you are on Linux, you need [additional development packages](http://netty.io/wiki/native-transports.html) installed on your system, because you'll build the native transport.
 
-Note that this is build-time requirement.  JDK 5 (for 3.x) or 6 (for 4.0+) is enough to run your Netty-based application.
+# 测试代码位置netty-example
 
-## Branches to look
+包路径：[io.netty.example.lishuai]
 
-Development of all versions takes place in each branch whose name is identical to `<majorVersion>.<minorVersion>`.  For example, the development of 3.9 and 4.0 resides in [the branch '3.9'](https://github.com/netty/netty/tree/3.9) and [the branch '4.0'](https://github.com/netty/netty/tree/4.0) respectively.
+比如io.netty.example.lishuai.helloworld.HelloWorldServer
 
-## Usage with JDK 9
-
-Netty can be used in modular JDK9 applications as a collection of automatic modules. The module names follow the
-reverse-DNS style, and are derived from subproject names rather than root packages due to historical reasons. They
-are listed below:
-
- * `io.netty.all`
- * `io.netty.buffer`
- * `io.netty.codec`
- * `io.netty.codec.dns`
- * `io.netty.codec.haproxy`
- * `io.netty.codec.http`
- * `io.netty.codec.http2`
- * `io.netty.codec.memcache`
- * `io.netty.codec.mqtt`
- * `io.netty.codec.redis`
- * `io.netty.codec.smtp`
- * `io.netty.codec.socks`
- * `io.netty.codec.stomp`
- * `io.netty.codec.xml`
- * `io.netty.common`
- * `io.netty.handler`
- * `io.netty.handler.proxy`
- * `io.netty.resolver`
- * `io.netty.resolver.dns`
- * `io.netty.transport`
- * `io.netty.transport.epoll` (`native` omitted - reserved keyword in Java)
- * `io.netty.transport.kqueue` (`native` omitted - reserved keyword in Java)
- * `io.netty.transport.unix.common` (`native` omitted - reserved keyword in Java)
- * `io.netty.transport.rxtx`
- * `io.netty.transport.sctp`
- * `io.netty.transport.udt`
+- io.netty.example.lishuai
+    - io            基础io
+    - nio           nio
+    - likeio        使用了线程池的io
+    - helloworld    基于netty的测试demo
 
 
 
-Automatic modules do not provide any means to declare dependencies, so you need to list each used module separately
-in your `module-info` file.
+
+
+# 参考
+- [ls-rpc](https://github.com/lishuai2016/lishuai-notes/tree/master/ls-rpc)
+- [io\nio\aio\netty等demo](https://github.com/lishuai2016/lishuai-notes/tree/master/ls-java-core/src/main/java/com/ls/io)
