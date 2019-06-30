@@ -37,3 +37,4 @@ dependency-reduced-pom.xml
 # exclude mainframer files
 mainframer
 .mainframer
+/target/

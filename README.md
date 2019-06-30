@@ -31,3 +31,19 @@ Netty是一个基于NIO的基于事件的高性能网络框架，在NIO里面，
 # 参考
 - [ls-rpc](https://github.com/lishuai2016/lishuai-notes/tree/master/ls-rpc)
 - [io\nio\aio\netty等demo](https://github.com/lishuai2016/lishuai-notes/tree/master/ls-java-core/src/main/java/com/ls/io)
+
+
+# netty源码相关优秀博文
+
+- [新手入门：目前为止最透彻的的Netty高性能原理和框架架构解析](https://www.jianshu.com/p/f16698aa8be2?utm_source=oschina-app)
+- []()
+- []()
+- []()
+- []()
+- []()
+- []()
+
+
+
+
+
