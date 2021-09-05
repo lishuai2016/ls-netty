@@ -25,6 +25,10 @@ Netty是一个基于NIO的基于事件的高性能网络框架，在NIO里面，
     - helloworld    基于netty的测试demo
 
 
+# 文章
+- [NIO基础](./NIO基础.md)
+- [Netty高性能原理和框架架构解析(重点)](./Netty高性能原理和框架架构解析.md)
+- [netty结构简介](./netty结构简介.md)
 
 
 
@@ -36,12 +40,14 @@ Netty是一个基于NIO的基于事件的高性能网络框架，在NIO里面，
 # netty源码相关优秀博文
 
 - [新手入门：目前为止最透彻的的Netty高性能原理和框架架构解析](https://www.jianshu.com/p/f16698aa8be2?utm_source=oschina-app)
-- []()
-- []()
-- []()
-- []()
-- []()
-- []()
+- [Netty入门简介](https://www.jianshu.com/p/1123c9164e3e)
+- [Netty源码分析](https://www.jianshu.com/nb/7269354)
+- [Netty 启动过程源码分析 （本文超长慎读）(基于4.1.23)](https://www.jianshu.com/p/46861a05ce1e)
+- [netty源码分析](https://www.cnblogs.com/ll409546297/p/8004409.html)
+
+
+
+
 
 
 

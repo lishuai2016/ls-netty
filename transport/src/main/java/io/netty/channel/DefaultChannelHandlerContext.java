@@ -21,8 +21,17 @@ final class DefaultChannelHandlerContext extends AbstractChannelHandlerContext {
 
     private final ChannelHandler handler;
 
+    /**
+     * 这个ChannelHandlerContext包含ChannelPipeline和ChannelHandler
+     *
+     * @param pipeline
+     * @param executor
+     * @param name
+     * @param handler
+     */
     DefaultChannelHandlerContext(
             DefaultChannelPipeline pipeline, EventExecutor executor, String name, ChannelHandler handler) {
+        // 后面的两个参数会判断这个channelhandler是输入处理或者输出处理
         super(pipeline, executor, name, isInbound(handler), isOutbound(handler));
         if (handler == null) {
             throw new NullPointerException("handler");
@@ -34,6 +43,13 @@ final class DefaultChannelHandlerContext extends AbstractChannelHandlerContext {
     public ChannelHandler handler() {
         return handler;
     }
+
+    /**
+     *  这个channelhandlercontext包含有下面的两个静态的方法来判断ChannelHandler是处理输入流或者输出流的
+     *
+     * @param handler
+     * @return
+     */
 
     private static boolean isInbound(ChannelHandler handler) {
         return handler instanceof ChannelInboundHandler;

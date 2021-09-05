@@ -80,6 +80,15 @@ abstract class AbstractChannelHandlerContext extends DefaultAttributeMap
 
     private volatile int handlerState = INIT;
 
+    /**
+     * 默认的唯一构造函数
+     *
+     * @param pipeline
+     * @param executor
+     * @param name
+     * @param inbound
+     * @param outbound
+     */
     AbstractChannelHandlerContext(DefaultChannelPipeline pipeline, EventExecutor executor, String name,
                                   boolean inbound, boolean outbound) {
         this.name = ObjectUtil.checkNotNull(name, "name");
@@ -332,12 +341,24 @@ abstract class AbstractChannelHandlerContext extends DefaultAttributeMap
         }
     }
 
+    /**
+     * 让下一个handler处理
+     * @param msg
+     * @return
+     */
     @Override
     public ChannelHandlerContext fireChannelRead(final Object msg) {
         invokeChannelRead(findContextInbound(), msg);
         return this;
     }
 
+    /**
+     *
+     * 找下一个handler处理这个msg
+     *
+     * @param next
+     * @param msg
+     */
     static void invokeChannelRead(final AbstractChannelHandlerContext next, Object msg) {
         final Object m = next.pipeline.touch(ObjectUtil.checkNotNull(msg, "msg"), next);
         EventExecutor executor = next.executor();
@@ -901,14 +922,26 @@ abstract class AbstractChannelHandlerContext extends DefaultAttributeMap
         return false;
     }
 
+    /**
+     *
+     * 找当前handler对应的输入ChannelHandlerContext
+     *
+     * 其实这里是一个双向链表，朝后走遍历一遍找输入handler进行挨个处理
+     *
+     * @return
+     */
     private AbstractChannelHandlerContext findContextInbound() {
         AbstractChannelHandlerContext ctx = this;
         do {
-            ctx = ctx.next;
+            ctx = ctx.next;//这个next指向哪里？？？应该是根据pipeline来获取的，跳过输出的，找输入的进行处理
         } while (!ctx.inbound);
         return ctx;
     }
 
+    /**
+     * 其实这里是一个双向链表，朝前走遍历一遍找输出handler进行挨个处理
+     * @return
+     */
     private AbstractChannelHandlerContext findContextOutbound() {
         AbstractChannelHandlerContext ctx = this;
         do {

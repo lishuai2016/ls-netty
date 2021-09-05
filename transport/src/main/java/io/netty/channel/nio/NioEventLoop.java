@@ -418,6 +418,12 @@ public final class NioEventLoop extends SingleThreadEventLoop {
         }
     }
 
+    /**
+     * NioEventLoop的源码中，ioRatio的默认值是50，表示处理网络IO事件的时间和处理非网络IO事件的时间相等，
+     * 首先调用processSelectedKeys()来处理select出来的就绪事件(网络IO事件),
+     * 然后调用runAllTasks(ioTime * (100 - ioRatio) / ioRatio)轮询处理任务队列中的所有任务，
+     * 任务的超时时间就是我们处理IO事件所花费的时间。
+     */
     @Override
     protected void run() {
         for (;;) {
@@ -482,15 +488,17 @@ public final class NioEventLoop extends SingleThreadEventLoop {
                     try {
                         processSelectedKeys();
                     } finally {
-                        // Ensure we always run tasks.
+                        // Ensure we always run tasks
                         runAllTasks();
                     }
                 } else {
                     final long ioStartTime = System.nanoTime();
                     try {
+                        // 处理select出来的就绪事件
                         processSelectedKeys();
                     } finally {
                         // Ensure we always run tasks.
+                        // 执行所有的定时任务，并且给定执行任务的超时时间
                         final long ioTime = System.nanoTime() - ioStartTime;
                         runAllTasks(ioTime * (100 - ioRatio) / ioRatio);
                     }

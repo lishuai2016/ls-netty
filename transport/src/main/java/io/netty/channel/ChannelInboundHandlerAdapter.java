@@ -80,9 +80,12 @@ public class ChannelInboundHandlerAdapter extends ChannelHandlerAdapter implemen
      * to the next {@link ChannelInboundHandler} in the {@link ChannelPipeline}.
      *
      * Sub-classes may override this method to change behavior.
+     *
+     * 这个方法在ChannelInboundHandler中定义的
      */
     @Override
     public void channelRead(ChannelHandlerContext ctx, Object msg) throws Exception {
+        //让下一个channelhandler处理
         ctx.fireChannelRead(msg);
     }
 

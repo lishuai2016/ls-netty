@@ -82,10 +82,10 @@ public abstract class AbstractNioChannel extends AbstractChannel {
      */
     protected AbstractNioChannel(Channel parent, SelectableChannel ch, int readInterestOp) {
         super(parent);
-        this.ch = ch;
-        this.readInterestOp = readInterestOp;
+        this.ch = ch;//这个channel中包含的jdk标准的channel
+        this.readInterestOp = readInterestOp;//感兴趣的操作
         try {
-            ch.configureBlocking(false);
+            ch.configureBlocking(false);//设置为非阻塞
         } catch (IOException e) {
             try {
                 ch.close();
@@ -378,6 +378,10 @@ public abstract class AbstractNioChannel extends AbstractChannel {
         return loop instanceof NioEventLoop;
     }
 
+    /**
+     *  这里做具体色注册
+     * @throws Exception
+     */
     @Override
     protected void doRegister() throws Exception {
         boolean selected = false;

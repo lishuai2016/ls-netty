@@ -47,9 +47,10 @@ public class ServerBootstrap extends AbstractBootstrap<ServerBootstrap, ServerCh
     private final Map<ChannelOption<?>, Object> childOptions = new LinkedHashMap<ChannelOption<?>, Object>();
     private final Map<AttributeKey<?>, Object> childAttrs = new LinkedHashMap<AttributeKey<?>, Object>();
     private final ServerBootstrapConfig config = new ServerBootstrapConfig(this);
-    private volatile EventLoopGroup childGroup;
+    private volatile EventLoopGroup childGroup;//工作线程池
     private volatile ChannelHandler childHandler;
 
+    // 该类只有下面的这两个构造器
     public ServerBootstrap() { }
 
     private ServerBootstrap(ServerBootstrap bootstrap) {
@@ -78,14 +79,14 @@ public class ServerBootstrap extends AbstractBootstrap<ServerBootstrap, ServerCh
      * {@link Channel}'s.
      */
     public ServerBootstrap group(EventLoopGroup parentGroup, EventLoopGroup childGroup) {
-        super.group(parentGroup);
+        super.group(parentGroup);//设置主EventLoopGroup
         if (childGroup == null) {
             throw new NullPointerException("childGroup");
         }
         if (this.childGroup != null) {
             throw new IllegalStateException("childGroup set already");
         }
-        this.childGroup = childGroup;
+        this.childGroup = childGroup;//设置辅助的EventLoopGroup
         return this;
     }
 
@@ -137,13 +138,23 @@ public class ServerBootstrap extends AbstractBootstrap<ServerBootstrap, ServerCh
         return this;
     }
 
+    /**
+     * 对服务端的channel进行初始化
+     1、设置 NioServerSocketChannel 的 TCP 属性。
+     2、由于 LinkedHashMap 是非线程安全的，使用同步进行处理。
+     3、对 NioServerSocketChannel 的 ChannelPipeline 添加 ChannelInitializer 处理器。
+     * @param channel
+     * @throws Exception
+     */
+
     @Override
     void init(Channel channel) throws Exception {
+        // 1、设置NioServerSocketChannel的TCP参数
         final Map<ChannelOption<?>, Object> options = options0();
         synchronized (options) {
-            setChannelOptions(channel, options, logger);
+            setChannelOptions(channel, options, logger);//设置配置的options
         }
-
+        // 2、将自定义属性绑定到NioServerSocketChannel上
         final Map<AttributeKey<?>, Object> attrs = attrs0();
         synchronized (attrs) {
             for (Entry<AttributeKey<?>, Object> e: attrs.entrySet()) {
@@ -153,8 +164,13 @@ public class ServerBootstrap extends AbstractBootstrap<ServerBootstrap, ServerCh
             }
         }
 
-        ChannelPipeline p = channel.pipeline();
+        ChannelPipeline p = channel.pipeline();//获得当前channel的pipeline对象
 
+
+        /**
+         * 这里，和上面类似，只不过不是设置当前channel的这两个属性，而是对应到新进来连接对应的channel
+         */
+        // 3、把Reactor从线程池、NioSocketChannel的处理器、TCP参数和自定义属性拷贝一份
         final EventLoopGroup currentChildGroup = childGroup;
         final ChannelHandler currentChildHandler = childHandler;
         final Entry<ChannelOption<?>, Object>[] currentChildOptions;
@@ -166,15 +182,27 @@ public class ServerBootstrap extends AbstractBootstrap<ServerBootstrap, ServerCh
             currentChildAttrs = childAttrs.entrySet().toArray(newAttrArray(0));
         }
 
+        // 4、动态添加一个ChannelHandler到pipeline中
         p.addLast(new ChannelInitializer<Channel>() {
             @Override
             public void initChannel(final Channel ch) throws Exception {
                 final ChannelPipeline pipeline = ch.pipeline();
+                //在bootstrap中设置的handler，比如 handler(new LoggingHandler(LogLevel.INFO))
                 ChannelHandler handler = config.handler();
                 if (handler != null) {
                     pipeline.addLast(handler);
                 }
 
+
+                //这里往线程池中提交一个任务，ServerBootstrapAcceptor是一个静态的内部类，往pipeline添加一个handler
+
+                /**
+                 * 加入新连接处理器
+                 *p.addLast()向serverChannel的流水线处理器中加入了一个 ServerBootstrapAcceptor，从名字上就可以看出来，
+                 * 这是一个接入器，专门接受新请求，把新的请求扔给某个事件循环器
+                 *
+                 * 这里难道就是accept主程序接受客户端请求的入口？？？
+                 */
                 ch.eventLoop().execute(new Runnable() {
                     @Override
                     public void run() {

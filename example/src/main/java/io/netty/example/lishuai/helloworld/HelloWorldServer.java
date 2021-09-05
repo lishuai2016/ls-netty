@@ -75,6 +75,15 @@ public class HelloWorldServer {
             System.out.println("HelloWorldServerHandler active");
         }
 
+        /**
+         *
+         * 问题：下面的msg信息是在哪里产生的？？？
+         *
+         * @param ctx
+         * @param msg
+         * @throws Exception
+         */
+
         @Override
         public void channelRead(ChannelHandlerContext ctx, Object msg) throws Exception {
             System.out.println("server channelRead..");

@@ -60,12 +60,17 @@ public abstract class MultithreadEventExecutorGroup extends AbstractEventExecuto
 
     /**
      * Create a new instance.
-     *
+     1、如果 executor 是null，创建一个默认的 ThreadPerTaskExecutor，使用 Netty 默认的线程工厂。
+     2、根据传入的线程数（CPU*2）创建一个线程池（单例线程池）数组。
+     3、循环填充数组中的元素。如果异常，则关闭所有的单例线程池。
+     4、根据线程选择工厂创建一个 线程选择器，默认是对2取余（位运算），也可以顺序获取。
+     5、为每一个单例线程池添加一个关闭监听器。
+     6、将所有的单例线程池添加到一个 HashSet 中。
      * @param nThreads          the number of threads that will be used by this instance.
      * @param executor          the Executor to use, or {@code null} if the default should be used.
      * @param chooserFactory    the {@link EventExecutorChooserFactory} to use.
      * @param args              arguments which will passed to each {@link #newChild(Executor, Object...)} call
-     */
+     */ // 1.默认 core *2； 2.null； 3. 单例new DefaultEventExecutorChooserFactory()，；4， 3-5可变参数
     protected MultithreadEventExecutorGroup(int nThreads, Executor executor,
                                             EventExecutorChooserFactory chooserFactory, Object... args) {
         if (nThreads <= 0) {
@@ -73,21 +78,23 @@ public abstract class MultithreadEventExecutorGroup extends AbstractEventExecuto
         }
 
         if (executor == null) {
+            // 类名为名称的线程工厂
+            // 该线程池没有任何队列，提交任务后，创建任何线程类型都是 FastThreadLocalRunnable, 并且立即start。
             executor = new ThreadPerTaskExecutor(newDefaultThreadFactory());
         }
-
+        // 创建一个事件执行组
         children = new EventExecutor[nThreads];
 
         for (int i = 0; i < nThreads; i ++) {
             boolean success = false;
             try {
-                children[i] = newChild(executor, args);
+                children[i] = newChild(executor, args);// 创建 new NioEventLoop
                 success = true;
             } catch (Exception e) {
                 // TODO: Think about if this is a good exception type
                 throw new IllegalStateException("failed to create a child event loop", e);
             } finally {
-                if (!success) {
+                if (!success) {// 如果创建失败，优雅关闭
                     for (int j = 0; j < i; j ++) {
                         children[j].shutdownGracefully();
                     }
@@ -119,19 +126,20 @@ public abstract class MultithreadEventExecutorGroup extends AbstractEventExecuto
             }
         };
 
-        for (EventExecutor e: children) {
+        for (EventExecutor e: children) {//每一个单例线程池添加一个关闭监听器。
             e.terminationFuture().addListener(terminationListener);
         }
 
         Set<EventExecutor> childrenSet = new LinkedHashSet<EventExecutor>(children.length);
         Collections.addAll(childrenSet, children);
-        readonlyChildren = Collections.unmodifiableSet(childrenSet);
+        readonlyChildren = Collections.unmodifiableSet(childrenSet);//将所有的单例线程池添加到一个 HashSet 中
     }
 
     protected ThreadFactory newDefaultThreadFactory() {
         return new DefaultThreadFactory(getClass());
     }
 
+    // MultithreadEventExecutorGroup的next()方法
     @Override
     public EventExecutor next() {
         return chooser.next();

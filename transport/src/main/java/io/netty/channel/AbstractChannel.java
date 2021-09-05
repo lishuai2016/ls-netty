@@ -64,7 +64,7 @@ public abstract class AbstractChannel extends DefaultAttributeMap implements Cha
 
     private volatile SocketAddress localAddress;
     private volatile SocketAddress remoteAddress;
-    private volatile EventLoop eventLoop;
+    private volatile EventLoop eventLoop;//这个什么时候传进来的
     private volatile boolean registered;
     private boolean closeInitiated;
 
@@ -79,10 +79,10 @@ public abstract class AbstractChannel extends DefaultAttributeMap implements Cha
      *        the parent of this channel. {@code null} if there's no parent.
      */
     protected AbstractChannel(Channel parent) {
-        this.parent = parent;
-        id = newId();
-        unsafe = newUnsafe();
-        pipeline = newChannelPipeline();
+        this.parent = parent;//默认的这个parent为null
+        id = newId();//生成一个channel标识的id
+        unsafe = newUnsafe();//这个的作用？？？
+        pipeline = newChannelPipeline();//channel会在这里构建一个pipeline对象
     }
 
     /**
@@ -459,6 +459,19 @@ public abstract class AbstractChannel extends DefaultAttributeMap implements Cha
             return remoteAddress0();
         }
 
+        /**
+         * 这个方法什么时候调用？？？
+         *
+         *
+         * 先将EventLoop事件循环器绑定到该NioServerSocketChannel上，然后调用 register0()
+         *
+         * 进入到AbstractUnsafe的register方法中，首先将Reactor线程绑定到NioServerSocketChannel上，
+         * 然后判断当前线程是否为Reactor线程，因为我们还在Main线程中，
+         * 调用eventLoop.inEventLoop()返回false，进入到else分支，然后调用Reactor线程重写的execute方法。
+         *
+         * @param eventLoop
+         * @param promise
+         */
         @Override
         public final void register(EventLoop eventLoop, final ChannelPromise promise) {
             if (eventLoop == null) {
@@ -474,12 +487,16 @@ public abstract class AbstractChannel extends DefaultAttributeMap implements Cha
                 return;
             }
 
+            // 将Reactor线程绑定到NioServerSocketChannel上
             AbstractChannel.this.eventLoop = eventLoop;
 
+            // 判断当前线程是否为Reactor线程
+            // 这里我们还在Main线程中,这里返回false,进入到else分支
             if (eventLoop.inEventLoop()) {
-                register0(promise);
+                register0(promise);//关键
             } else {
                 try {
+                    // 调用Reactor线程重载的execute方法
                     eventLoop.execute(new Runnable() {
                         @Override
                         public void run() {
@@ -505,13 +522,13 @@ public abstract class AbstractChannel extends DefaultAttributeMap implements Cha
                     return;
                 }
                 boolean firstRegistration = neverRegistered;
-                doRegister();
+                doRegister();//关注这里
                 neverRegistered = false;
                 registered = true;
 
                 // Ensure we call handlerAdded(...) before we actually notify the promise. This is needed as the
                 // user may already fire events through the pipeline in the ChannelFutureListener.
-                pipeline.invokeHandlerAddedIfNeeded();
+                pipeline.invokeHandlerAddedIfNeeded(); //pipeline这里
 
                 safeSetSuccess(promise);
                 pipeline.fireChannelRegistered();
@@ -519,7 +536,7 @@ public abstract class AbstractChannel extends DefaultAttributeMap implements Cha
                 // multiple channel actives if the channel is deregistered and re-registered.
                 if (isActive()) {
                     if (firstRegistration) {
-                        pipeline.fireChannelActive();
+                        pipeline.fireChannelActive();//这里
                     } else if (config().isAutoRead()) {
                         // This channel was registered before and autoRead() is set. This means we need to begin read
                         // again so that we process inbound data.

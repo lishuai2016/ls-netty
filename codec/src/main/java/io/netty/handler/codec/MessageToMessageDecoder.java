@@ -85,7 +85,7 @@ public abstract class MessageToMessageDecoder<I> extends ChannelInboundHandlerAd
                 @SuppressWarnings("unchecked")
                 I cast = (I) msg;
                 try {
-                    decode(ctx, cast, out);
+                    decode(ctx, cast, out);//让子类去做解码处理，out是一个list，子类把处理后的数据加入list中
                 } finally {
                     ReferenceCountUtil.release(cast);
                 }
@@ -97,9 +97,15 @@ public abstract class MessageToMessageDecoder<I> extends ChannelInboundHandlerAd
         } catch (Exception e) {
             throw new DecoderException(e);
         } finally {
-            int size = out.size();
+            int size = out.size();//输入信息的大小
             for (int i = 0; i < size; i ++) {
                 ctx.fireChannelRead(out.getUnsafe(i));
+                //找pipeline中的下一个handler处理【为何不把信息作为一个整体处理？】
+
+                /**
+                 * ChannelHandlerContext 是哪里生成的？？？
+                 */
+
             }
             out.recycle();
         }
@@ -115,4 +121,5 @@ public abstract class MessageToMessageDecoder<I> extends ChannelInboundHandlerAd
      * @throws Exception    is thrown if an error occurs
      */
     protected abstract void decode(ChannelHandlerContext ctx, I msg, List<Object> out) throws Exception;
+    //模板方法，让子类去处理
 }

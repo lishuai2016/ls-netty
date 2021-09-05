@@ -44,6 +44,8 @@ public interface ChannelInboundHandler extends ChannelHandler {
 
     /**
      * Invoked when the current {@link Channel} has read a message from the peer.
+     *
+     * 输入handler读取信息
      */
     void channelRead(ChannelHandlerContext ctx, Object msg) throws Exception;
 

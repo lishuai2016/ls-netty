@@ -73,6 +73,7 @@ public abstract class MultithreadEventLoopGroup extends MultithreadEventExecutor
         return new DefaultThreadFactory(getClass(), Thread.MAX_PRIORITY);
     }
 
+    // MultithreadEventLoopGroup的next方法
     @Override
     public EventLoop next() {
         return (EventLoop) super.next();
@@ -80,7 +81,7 @@ public abstract class MultithreadEventLoopGroup extends MultithreadEventExecutor
 
     @Override
     protected abstract EventLoop newChild(Executor executor, Object... args) throws Exception;
-
+    // MultithreadEventLoopGroup的register方法
     @Override
     public ChannelFuture register(Channel channel) {
         return next().register(channel);

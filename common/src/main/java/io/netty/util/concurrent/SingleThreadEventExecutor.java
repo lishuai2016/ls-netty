@@ -79,7 +79,7 @@ public abstract class SingleThreadEventExecutor extends AbstractScheduledEventEx
             AtomicReferenceFieldUpdater.newUpdater(
                     SingleThreadEventExecutor.class, ThreadProperties.class, "threadProperties");
 
-    private final Queue<Runnable> taskQueue;
+    private final Queue<Runnable> taskQueue;//内部的任务队列
 
     private volatile Thread thread;
     @SuppressWarnings("unused")
@@ -351,6 +351,7 @@ public abstract class SingleThreadEventExecutor extends AbstractScheduledEventEx
         boolean ranAtLeastOne = false;
 
         do {
+            // 将定时任务队列中的任何任务添加到Reactor线程的任务队列
             fetchedAll = fetchFromScheduledTaskQueue();
             if (runAllTasksFrom(taskQueue)) {
                 ranAtLeastOne = true;
@@ -370,6 +371,12 @@ public abstract class SingleThreadEventExecutor extends AbstractScheduledEventEx
      * @param taskQueue To poll and execute all tasks.
      *
      * @return {@code true} if at least one task was executed.
+     *
+     *  *
+     * 在runAllTasks方法中，首先将定时任务队列中超过延时执行的任务添加到Reactor线程的任务队列中，
+     * 如果队列中有任务，那么先计算任务的截止时间，调用线程的run()方法执行任务，
+     * 每执行完64个任务，都会校验一下有没有超过任务的截止时间，防止任务长时间占用CPU，
+     * 这也是netty很细节的地方；值得注意的是，每一个循环周期，都会执行tailTasks队列中的任务。
      */
     protected final boolean runAllTasksFrom(Queue<Runnable> taskQueue) {
         Runnable task = pollTaskFrom(taskQueue);
@@ -388,11 +395,20 @@ public abstract class SingleThreadEventExecutor extends AbstractScheduledEventEx
     /**
      * Poll all tasks from the task queue and run them via {@link Runnable#run()} method.  This method stops running
      * the tasks in the task queue and returns if it ran longer than {@code timeoutNanos}.
+     *
+     * 在runAllTasks方法中，首先将定时任务队列中超过延时执行的任务添加到Reactor线程的任务队列中，
+     * 如果队列中有任务，那么先计算任务的截止时间，调用线程的run()方法执行任务，没执行完64个任务，
+     * 都会校验一下有没有超过任务的截止时间，防止任务长时间占用CPU，这也是netty很细节的地方；
+     * 值得注意的是，每一个循环周期，都会执行tailTasks队列中的任务。
      */
     protected boolean runAllTasks(long timeoutNanos) {
+        // 将定时任务队列中的任何任务添加到Reactor线程的任务队列
         fetchFromScheduledTaskQueue();
+        // 取出一个任务
         Runnable task = pollTask();
         if (task == null) {
+            // 在下一个循环周期在执行任务队列中的任务，
+            // 这里会执行tailTasks队列中的任务
             afterRunningAllTasks();
             return false;
         }
@@ -401,12 +417,14 @@ public abstract class SingleThreadEventExecutor extends AbstractScheduledEventEx
         long runTasks = 0;
         long lastExecutionTime;
         for (;;) {
+            // 调用线程的run()方法执行任务
             safeExecute(task);
 
             runTasks ++;
 
             // Check timeout every 64 tasks because nanoTime() is relatively expensive.
             // XXX: Hard-coded value - will make it configurable if it is really a problem.
+            // 每执行64个任务，校验一下有没有超过任务的截止时间，防止任务长时间占用CPU
             if ((runTasks & 0x3F) == 0) {
                 lastExecutionTime = ScheduledFutureTask.nanoTime();
                 if (lastExecutionTime >= deadline) {
@@ -746,6 +764,13 @@ public abstract class SingleThreadEventExecutor extends AbstractScheduledEventEx
         return isTerminated();
     }
 
+    /**
+     * 把Selector注册的逻辑封装成一个任务放到Reactor线程的任务队列
+
+     进入到SingleThreadEventExecutor的execute方法中，它重写了线程池的execute方法；
+     execute方法第一步做的事情便是把register0(promise)的注册逻辑封装成一个任务放到Reactor线程的任务队列中。
+     * @param task
+     */
     @Override
     public void execute(Runnable task) {
         if (task == null) {
@@ -753,8 +778,11 @@ public abstract class SingleThreadEventExecutor extends AbstractScheduledEventEx
         }
 
         boolean inEventLoop = inEventLoop();
+        // 把register0(promise)的注册逻辑封装成一个任务放到任务队列中
         addTask(task);
+        // 此时依然还在Main线程中,这里返回true
         if (!inEventLoop) {
+            // 启动Reactor线程
             startThread();
             if (isShutdown()) {
                 boolean reject = false;
@@ -859,7 +887,9 @@ public abstract class SingleThreadEventExecutor extends AbstractScheduledEventEx
     private static final long SCHEDULE_PURGE_INTERVAL = TimeUnit.SECONDS.toNanos(1);
 
     private void startThread() {
+        // 线程状态判断,此时线程还未启动
         if (state == ST_NOT_STARTED) {
+            // 通过CAS的方式更新线程状态
             if (STATE_UPDATER.compareAndSet(this, ST_NOT_STARTED, ST_STARTED)) {
                 try {
                     doStartThread();
@@ -891,6 +921,7 @@ public abstract class SingleThreadEventExecutor extends AbstractScheduledEventEx
 
     private void doStartThread() {
         assert thread == null;
+        // 调用ThreadPerTaskExecutor的execute方法,启动线程
         executor.execute(new Runnable() {
             @Override
             public void run() {
@@ -902,6 +933,15 @@ public abstract class SingleThreadEventExecutor extends AbstractScheduledEventEx
                 boolean success = false;
                 updateLastExecutionTime();
                 try {
+                    // 轮询selector事件,执行任务队列中d饿任务
+                    /**
+                     * 然后执行run()方法中的SingleThreadEventExecutor.this.run()，
+                     * 这个run()是在NioEventLoop中实现的，在如下NioEventLoop的源码中，
+                     * ioRatio的默认值是50，表示处理网络IO事件的时间和处理非网络IO事件的时间相等，
+                     * 首先调用processSelectedKeys()来处理select出来的就绪事件(网络IO事件),
+                     * 然后调用runAllTasks(ioTime * (100 - ioRatio) / ioRatio)轮询处理任务队列中的所有任务，
+                     * 任务的超时时间就是我们处理IO事件所花费的时间
+                     */
                     SingleThreadEventExecutor.this.run();
                     success = true;
                 } catch (Throwable t) {

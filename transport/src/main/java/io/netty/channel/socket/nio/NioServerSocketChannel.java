@@ -46,6 +46,24 @@ public class NioServerSocketChannel extends AbstractNioMessageChannel
                              implements io.netty.channel.socket.ServerSocketChannel {
 
     private static final ChannelMetadata METADATA = new ChannelMetadata(false, 16);
+
+
+    /**
+     * 这个SelectorProvider是一个jdk的接口，通过该接口可以获得标准的ServerSocketChannel，如何获取的？？？
+     *
+     *
+     *  普通的jdk的nio 通过serverChannel = ServerSocketChannel.open();来获得ServerSocketChannel其底层也是调用类似的方法获得
+
+     public static ServerSocketChannel open() throws IOException {
+     return SelectorProvider.provider().openServerSocketChannel();
+     }
+
+
+     NioServerSocketChannel的构造函数，构造函数中调用了一个newSocket方法，
+     在newSocket方法中才真正创建了一个服务端Channel；这里体现了netty一个很细节的地方，
+     当调用SelectorProvider.provider()的时候，里面是有同步代码块的，在高并发的场景下，
+     这势必会影响应用程序的性能，为了解决这个问题，netty在类加载的是时候就将SelectorProvider实例化好了。
+     */
     private static final SelectorProvider DEFAULT_SELECTOR_PROVIDER = SelectorProvider.provider();
 
     private static final InternalLogger logger = InternalLoggerFactory.getInstance(NioServerSocketChannel.class);
@@ -70,6 +88,11 @@ public class NioServerSocketChannel extends AbstractNioMessageChannel
     /**
      * Create a new instance
      * 无参数构造器
+     *
+     * 通过反射生成实例的时候，调用这里
+     1、通过 NIO 的SelectorProvider 的 openServerSocketChannel 方法得到JDK 的 channel。目的是让 Netty 包装 JDK 的 channel。同时设置刚兴趣的事件为 ACCEPT和非阻塞
+     2、创建了一个唯一的 ChannelId，创建了一个 NioMessageUnsafe，用于操作消息，创建了一个 DefaultChannelPipeline 管道，是个双向链表结构，用于过滤所有的进出的消息。
+     3、创建了一个 NioServerSocketChannelConfig 对象，用于对外展示一些配置。
      */
     public NioServerSocketChannel() {
         this(newSocket(DEFAULT_SELECTOR_PROVIDER));
@@ -84,9 +107,20 @@ public class NioServerSocketChannel extends AbstractNioMessageChannel
 
     /**
      * Create a new instance using the given {@link ServerSocketChannel}.
+     *
+     * 这里根据jdk中的标准ServerSocketChannel来构造一个NioServerSocketChannel实例
+     *
+     * 在NioServerSocketChannel的构造函数中，还调用了父类的构造函数，
+     * 从AbstractNioMessageChannel------>AbstractNioChannel------>AbstractChannel，
+     * 在调用到AbstractChannel的时候，依次创建了ChannelId、Unsafe和Pipeline，
+     * 调用完后，在AbstractNioChannel构造函数中将服务端Channel设置为非阻塞。
+     * 除此之外，还实例化了用于设置Socket TCP参数的配置类NioServerSocketChannelConfig。
      */
     public NioServerSocketChannel(ServerSocketChannel channel) {
+        //这里通过调用父类的构造函数，构建DefaultChannelPipeline以及把ServerSocketChannel设置为非阻塞模式等
+        //这里需要注意，channel中包含一个Pipeline实例，而Pipeline也包含对应的channel实例，两者互相绑定。
         super(null, channel, SelectionKey.OP_ACCEPT);
+        //javaChannel().socket()含义是更加ServerSocketChannel生成jdk标准的socket
         config = new NioServerSocketChannelConfig(this, javaChannel().socket());
     }
 
@@ -193,6 +227,11 @@ public class NioServerSocketChannel extends AbstractNioMessageChannel
         throw new UnsupportedOperationException();
     }
 
+    /**
+     * 内部类，封装当前NioServerSocketChannel的配置信息
+     *
+     * 初步理解为生成channel的配置信息和ServerSocket
+     */
     private final class NioServerSocketChannelConfig extends DefaultServerSocketChannelConfig {
         private NioServerSocketChannelConfig(NioServerSocketChannel channel, ServerSocket javaSocket) {
             super(channel, javaSocket);

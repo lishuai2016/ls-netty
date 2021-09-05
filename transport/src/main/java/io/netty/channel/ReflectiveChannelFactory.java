@@ -23,6 +23,8 @@ import java.lang.reflect.Constructor;
 
 /**
  * A {@link ChannelFactory} that instantiates a new {@link Channel} by invoking its default constructor reflectively.
+ *
+ * Reflective 反射的
  */
 public class ReflectiveChannelFactory<T extends Channel> implements ChannelFactory<T> {
 
@@ -31,16 +33,22 @@ public class ReflectiveChannelFactory<T extends Channel> implements ChannelFacto
     public ReflectiveChannelFactory(Class<? extends T> clazz) {
         ObjectUtil.checkNotNull(clazz, "clazz");
         try {
-            this.constructor = clazz.getConstructor();
+            this.constructor = clazz.getConstructor();//具体channel类型的默认构造器
         } catch (NoSuchMethodException e) {
             throw new IllegalArgumentException("Class " + StringUtil.simpleClassName(clazz) +
                     " does not have a public non-arg constructor", e);
         }
     }
 
+    /**
+     * 通过构造器生成一个channel
+     * @return
+     */
+
     @Override
     public T newChannel() {
         try {
+            // 反射调用默认构造方法，创建 Channel 对象
             return constructor.newInstance();
         } catch (Throwable t) {
             throw new ChannelException("Unable to create Channel from class " + constructor.getDeclaringClass(), t);

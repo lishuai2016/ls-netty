@@ -42,6 +42,8 @@ import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
 /**
  * The default {@link ChannelPipeline} implementation.  It is usually created
  * by a {@link Channel} implementation when the {@link Channel} is created.
+ *
+ * ChannelPipeline唯一默认的实现类
  */
 public class DefaultChannelPipeline implements ChannelPipeline {
 
@@ -90,10 +92,15 @@ public class DefaultChannelPipeline implements ChannelPipeline {
     private boolean registered;
 
     protected DefaultChannelPipeline(Channel channel) {
-        this.channel = ObjectUtil.checkNotNull(channel, "channel");
+        this.channel = ObjectUtil.checkNotNull(channel, "channel");//包含关联的channel，一个pipeline管理一个channel
         succeededFuture = new SucceededChannelFuture(channel, null);
         voidPromise =  new VoidChannelPromise(channel, true);
 
+        /**
+         * 初始化ChannelHandlerContext双向链表的头尾节点，没有做具体的业务处理，仅仅是初始化双向链表的头尾
+         *
+         * 往pipeline中添加的handler会被包装成ChannelHandlerContext，添加到这里链表中
+         */
         tail = new TailContext(this);
         head = new HeadContext(this);
 
@@ -195,15 +202,33 @@ public class DefaultChannelPipeline implements ChannelPipeline {
         return addLast(null, name, handler);
     }
 
+    /**
+     * 添加ChannelHandler 最后会在这里会根据ChannelHandler生成ChannelHandlerContext【DefaultChannelHandlerContext】
+     *
+     * @param group    the {@link EventExecutorGroup} which will be used to execute the {@link ChannelHandler}
+     *                 methods
+     * @param name     the name of the handler to append
+     * @param handler  the handler to append
+    1、检查该 handler 是否符合标准，如果没有 Sharable 注解且已经被使用过了，就抛出异常。
+    2、创建一个 AbstractChannelHandlerContext 对象，这里说一下，ChannelHandlerContext 对象是 ChannelHandler 和 ChannelPipeline 之间的关联，每当有 ChannelHandler 添加到 Pipeline 中时，都会创建 Context。Context 的主要功能是管理他所关联的 Handler 和同一个 Pipeline 中的其他 Handler 之间的交互。
+    3、然后将 Context 添加到链表中。也就是追加到 tail 节点的前面。
+    4、最后，同步或者异步或者晚点异步的调用 callHandlerAdded0 方法，在该方法中，
+    调用之前的 handler 的 handlerAdded 方法，而该方法内部调用了之前的 ChannelInitializer 匿名类的 initChannel 方法，
+    并且参数就是 context 的 channel（通过 pipeline 获取），也就是 NioServerSocketChannel。
+    这个 Context 的标准实现就是 DefaultChannelHandlerContext。这个 Context 内部会包含一些重要的属性，比如 pipeline，handler，
+    属于出站类型还是入站类型等。
+     * @return
+     */
     @Override
     public final ChannelPipeline addLast(EventExecutorGroup group, String name, ChannelHandler handler) {
         final AbstractChannelHandlerContext newCtx;
         synchronized (this) {
             checkMultiplicity(handler);
-
+            // 在这里进行创建DefaultChannelHandlerContext
+            //filterName(name, handler)会检测name是否为null已经是否已经往这个pipeline添加过的校验
             newCtx = newContext(group, filterName(name, handler), handler);
 
-            addLast0(newCtx);
+            addLast0(newCtx);//在尾部前插入
 
             // If the registered is false it means that the channel was not registered on an eventLoop yet.
             // In this case we add the context to the pipeline and add a task that will call
@@ -224,6 +249,12 @@ public class DefaultChannelPipeline implements ChannelPipeline {
         return this;
     }
 
+    // 1--->2--->tail
+    // 1<---2<---tail
+
+    // 1--->2--->3-->tail
+    // 1<---2<---3<--tail
+    //这里就是把新加入的节点加入尾部前.假如假如的是3
     private void addLast0(AbstractChannelHandlerContext newCtx) {
         AbstractChannelHandlerContext prev = tail.prev;
         newCtx.prev = prev;
@@ -688,6 +719,11 @@ public class DefaultChannelPipeline implements ChannelPipeline {
         return last;
     }
 
+    /**
+     * 根据handler的名称在pipeline中查找
+     * @param name
+     * @return
+     */
     @Override
     public final ChannelHandler get(String name) {
         ChannelHandlerContext ctx = context(name);

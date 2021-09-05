@@ -23,7 +23,7 @@ import io.netty.handler.codec.protobuf.ProtobufEncoder;
 import io.netty.handler.codec.protobuf.ProtobufVarint32FrameDecoder;
 import io.netty.handler.codec.protobuf.ProtobufVarint32LengthFieldPrepender;
 import io.netty.handler.ssl.SslContext;
-
+//Protobuf编解码例子
 public class WorldClockClientInitializer extends ChannelInitializer<SocketChannel> {
 
     private final SslContext sslCtx;

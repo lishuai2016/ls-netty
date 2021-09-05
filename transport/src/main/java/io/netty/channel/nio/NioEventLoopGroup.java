@@ -40,6 +40,7 @@ public class NioEventLoopGroup extends MultithreadEventLoopGroup {
      * the {@link SelectorProvider} which is returned by {@link SelectorProvider#provider()}.
      */
     public NioEventLoopGroup() {
+        //1、默认0
         this(0);
     }
 
@@ -48,6 +49,7 @@ public class NioEventLoopGroup extends MultithreadEventLoopGroup {
      * {@link SelectorProvider} which is returned by {@link SelectorProvider#provider()}.
      */
     public NioEventLoopGroup(int nThreads) {
+        //1、默认0；2、默认null
         this(nThreads, (Executor) null);
     }
 
@@ -60,6 +62,7 @@ public class NioEventLoopGroup extends MultithreadEventLoopGroup {
     }
 
     public NioEventLoopGroup(int nThreads, Executor executor) {
+        //参数：1、默认0；2、默认null；3、默认nio的SelectorProvider
         this(nThreads, executor, SelectorProvider.provider());
     }
 
@@ -79,11 +82,13 @@ public class NioEventLoopGroup extends MultithreadEventLoopGroup {
 
     public NioEventLoopGroup(
             int nThreads, Executor executor, final SelectorProvider selectorProvider) {
+        //参数：1、默认0；2、默认null；3、默认nio的SelectorProvider；4、单例new DefaultSelectStrategyFactory()
         this(nThreads, executor, selectorProvider, DefaultSelectStrategyFactory.INSTANCE);
     }
 
     public NioEventLoopGroup(int nThreads, Executor executor, final SelectorProvider selectorProvider,
                              final SelectStrategyFactory selectStrategyFactory) {
+        //参数：1、默认0；2、默认null；3、默认nio的SelectorProvider；4、单例new DefaultSelectStrategyFactory()；5、默认拒绝策略，抛异常
         super(nThreads, executor, selectorProvider, selectStrategyFactory, RejectedExecutionHandlers.reject());
     }
 

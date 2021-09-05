@@ -269,7 +269,7 @@ public abstract class ByteToMessageDecoder extends ChannelInboundHandlerAdapter 
             CodecOutputList out = CodecOutputList.newInstance();
             try {
                 ByteBuf data = (ByteBuf) msg;
-                first = cumulation == null;
+                first = cumulation == null;//判断是不是第一次读取数据
                 if (first) {
                     cumulation = data;
                 } else {
